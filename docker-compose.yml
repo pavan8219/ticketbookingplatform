@@ -1,0 +1,142 @@
+services:
+  # 1. Config Server
+  config-server:
+    build:
+      context: ./infrastructure/config-server
+      dockerfile: Dockerfile
+    ports:
+      - "8888:8888"
+    environment:
+      GITHUB_SERVER_URL: https://github.com/pavan8219/ticketbookingplatformconfig.git
+    networks:
+      - movie-network
+    restart: on-failure
+
+  # 2. Eureka Discovery Server
+  discovery-server:
+    build:
+      context: ./infrastructure/discovery-server
+      dockerfile: Dockerfile
+    ports:
+      - "8761:8761"
+    depends_on:
+      - config-server
+    networks:
+      - movie-network
+    restart: on-failure
+
+  # 3. Movie Service
+  movieservice:
+    build:
+      context: ./services/movieservice
+      dockerfile: Dockerfile
+    ports:
+      - "8082:8082"
+    environment:
+      CONFIG_SERVER_URL: http://config-server:8888
+      DISCOVERY_SERVER_URL: http://discovery-server:8761/eureka
+      DB_HOST: mysql-db
+      DB_PORT: 3306
+      DB_USERNAME: ${DB_USERNAME:-root}
+      DB_PASSWORD: ${DB_PASSWORD:-root}
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+    depends_on:
+      - config-server
+      - discovery-server
+    networks:
+      - movie-network
+    restart: on-failure
+
+  # 4. User Service
+  user-service:
+    build:
+      context: ./services/user-service
+      dockerfile: Dockerfile
+    ports:
+      - "8081:8081"
+    environment:
+      CONFIG_SERVER_URL: http://config-server:8888
+      DISCOVERY_SERVER_URL: http://discovery-server:8761/eureka
+      DB_HOST: mysql-db
+      DB_PORT: 3306
+      DB_USERNAME: ${DB_USERNAME:-root}
+      DB_PASSWORD: ${DB_PASSWORD:-root}
+      JWT_SECRET: ${JWT_SECRET}
+    depends_on:
+      - config-server
+      - discovery-server
+    networks:
+      - movie-network
+    restart: on-failure
+
+  # 5. Booking Service
+  bookingservice:
+    build:
+      context: ./services/bookingservice
+      dockerfile: Dockerfile
+    ports:
+      - "8083:8083"
+    environment:
+      CONFIG_SERVER_URL: http://config-server:8888
+      DISCOVERY_SERVER_URL: http://discovery-server:8761/eureka
+      DB_HOST: mysql-db
+      DB_PORT: 3306
+      DB_USERNAME: ${DB_USERNAME:-root}
+      DB_PASSWORD: ${DB_PASSWORD:-root}
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      REDIS_HOST: redis-server
+      REDIS_PORT: 6379
+    depends_on:
+      - config-server
+      - discovery-server
+    networks:
+      - movie-network
+    restart: on-failure
+
+  # 6. Payment Service
+  paymentservice:
+    build:
+      context: ./services/paymentservice
+      dockerfile: Dockerfile
+    ports:
+      - "8084:8084"
+    environment:
+      CONFIG_SERVER_URL: http://config-server:8888
+      DISCOVERY_SERVER_URL: http://discovery-server:8761/eureka
+      DB_HOST: mysql-db
+      DB_PORT: 3306
+      DB_USERNAME: ${DB_USERNAME:-root}
+      DB_PASSWORD: ${DB_PASSWORD:-root}
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+    depends_on:
+      - config-server
+      - discovery-server
+    networks:
+      - movie-network
+    restart: on-failure
+
+  # 7. API Gateway
+  api-gateway:
+    build:
+      context: ./infrastructure/api-gateway
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      CONFIG_SERVER_URL: http://config-server:8888
+      DISCOVERY_SERVER_URL: http://discovery-server:8761/eureka
+    depends_on:
+      - config-server
+      - discovery-server
+      - movieservice
+      - user-service
+      - bookingservice
+      - paymentservice
+    networks:
+      - movie-network
+    restart: on-failure
+
+networks:
+  movie-network:
+    external: true
+    name: movie-network

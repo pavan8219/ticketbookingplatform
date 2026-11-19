@@ -1,0 +1,14 @@
+server:
+  port: 8888
+
+spring:
+  application:
+    name: config-server
+
+  cloud:
+    config:
+      server:
+        git:
+          uri: ${GITHUB_SERVER_URL:https://github.com/pavan8219/ticketbookingplatformconfig.git}
+          default-label: main
+          clone-on-start: true
